@@ -8,12 +8,12 @@ const getMyRestaurant = async (req: Request, res: Response) => {
   try {
     const restaurant = await Restaurant.findOne({ user: req.userId });
     if (!restaurant) {
-      return res.status(404).json({ message: "restaurant not found" });
+      return res.status(404).json({ message: "tiffin not found" });
     }
     res.json(restaurant);
   } catch (error) {
     console.log("error", error);
-    res.status(500).json({ message: "Error fetching restaurant" });
+    res.status(500).json({ message: "Error fetching tiffin" });
   }
 };
 
@@ -24,7 +24,7 @@ const createMyRestaurant = async (req: Request, res: Response) => {
     if (existingRestaurant) {
       return res
         .status(409)
-        .json({ message: "User restaurant already exists" });
+        .json({ message: "User tiffin already exists" });
     }
 
     const imageUrl = await uploadImage(req.file as Express.Multer.File);
@@ -49,7 +49,7 @@ const updateMyRestaurant = async (req: Request, res: Response) => {
     });
 
     if (!restaurant) {
-      return res.status(404).json({ message: "restaurant not found" });
+      return res.status(404).json({ message: "tiffin not found" });
     }
 
     restaurant.restaurantName = req.body.restaurantName;
@@ -78,11 +78,11 @@ const getMyRestaurantOrders = async (req: Request, res: Response) => {
   try {
     const restaurant = await Restaurant.findOne({ user: req.userId });
     if (!restaurant) {
-      return res.status(404).json({ message: "restaurant not found" });
+      return res.status(404).json({ message: "tiffin not found" });
     }
 
     const orders = await Order.find({ restaurant: restaurant._id })
-      .populate("restaurant")
+      .populate("tiffin")
       .populate("user");
 
     res.json(orders);
