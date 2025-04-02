@@ -4,10 +4,22 @@ import Restaurant from "../models/restaurant";
 const getRestaurant = async (req: Request, res: Response) => {
   try {
     const restaurantId = req.params.restaurantId;
+    const day = req.query.day as string;
 
     const restaurant = await Restaurant.findById(restaurantId);
     if (!restaurant) {
       return res.status(404).json({ message: "restaurant not found" });
+    }
+
+    // If day is provided, filter menu items by day
+    if (day) {
+      const filteredMenuItems = restaurant.menuItems.filter(
+        (item) => item.day === day
+      );
+      return res.json({
+        ...restaurant.toObject(),
+        menuItems: filteredMenuItems,
+      });
     }
 
     res.json(restaurant);

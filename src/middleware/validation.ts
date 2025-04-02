@@ -45,5 +45,8 @@ export const validateMyRestaurantRequest = [
   body("menuItems.*.price")
     .isFloat({ min: 0 })
     .withMessage("Menu item price is required and must be a postive number"),
+  body("menuItems.*.day")
+    .isIn(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
+    .withMessage("Day must be a valid day of the week"),
   handleValidationErrors,
 ];

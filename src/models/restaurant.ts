@@ -8,7 +8,15 @@ const menuItemSchema = new mongoose.Schema({
   },
   name: { type: String, required: true },
   price: { type: Number, required: true },
+  day: { 
+    type: String, 
+    required: true,
+    enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  }
 });
+
+// Create an index on the day field for efficient querying
+menuItemSchema.index({ day: 1 });
 
 export type MenuItemType = InferSchemaType<typeof menuItemSchema>;
 
