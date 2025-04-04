@@ -25,14 +25,17 @@ type CheckoutSessionRequest = {
     menuItemId: string;
     name: string;
     quantity: string;
+    price: number;
   }[];
   deliveryDetails: {
     email: string;
     name: string;
     addressLine1: string;
     city: string;
+    country: string;
   };
   restaurantId: string;
+  totalAmount: number;
 };
 
 const stripeWebhookHandler = async (req: Request, res: Response) => {
@@ -70,12 +73,22 @@ const createCheckoutSession = async (req: Request, res: Response) => {
   try {
     const checkoutSessionRequest: CheckoutSessionRequest = req.body;
 
+    if (!checkoutSessionRequest.restaurantId) {
+      return res.status(400).json({ message: "Restaurant ID is required" });
+    }
+
     const restaurant = await Restaurant.findById(
       checkoutSessionRequest.restaurantId
     );
 
     if (!restaurant) {
-      throw new Error("Restaurant not found");
+      return res.status(404).json({ message: "Restaurant not found" });
+    }
+
+    // Validate delivery details
+    const { deliveryDetails } = checkoutSessionRequest;
+    if (!deliveryDetails.email || !deliveryDetails.name || !deliveryDetails.addressLine1 || !deliveryDetails.city) {
+      return res.status(400).json({ message: "All delivery details are required" });
     }
 
     const newOrder = new Order({
@@ -84,30 +97,42 @@ const createCheckoutSession = async (req: Request, res: Response) => {
       status: "placed",
       deliveryDetails: checkoutSessionRequest.deliveryDetails,
       cartItems: checkoutSessionRequest.cartItems,
+      totalAmount: checkoutSessionRequest.totalAmount,
       createdAt: new Date(),
     });
 
-    const lineItems = createLineItems(
-      checkoutSessionRequest,
-      restaurant.menuItems
-    );
+    try {
+      const lineItems = createLineItems(
+        checkoutSessionRequest,
+        restaurant.menuItems
+      );
 
-    const session = await createSession(
-      lineItems,
-      newOrder._id.toString(),
-      restaurant.deliveryPrice,
-      restaurant._id.toString()
-    );
+      const session = await createSession(
+        lineItems,
+        newOrder._id.toString(),
+        restaurant.deliveryPrice,
+        restaurant._id.toString()
+      );
 
-    if (!session.url) {
-      return res.status(500).json({ message: "Error creating stripe session" });
+      if (!session.url) {
+        return res.status(500).json({ message: "Error creating stripe session" });
+      }
+
+      await newOrder.save();
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Stripe session creation error:", error);
+      return res.status(500).json({ 
+        message: error.message || "Error creating checkout session",
+        details: error.raw?.message
+      });
     }
-
-    await newOrder.save();
-    res.json({ url: session.url });
   } catch (error: any) {
-    console.log(error);
-    res.status(500).json({ message: error.raw.message });
+    console.error("Checkout error:", error);
+    res.status(500).json({ 
+      message: "Failed to process checkout",
+      details: error.message 
+    });
   }
 };
 
@@ -124,10 +149,11 @@ const createLineItems = (
       throw new Error(`Menu item not found: ${cartItem.menuItemId}`);
     }
 
+    // Prices are already in paise from the frontend
     const line_item: Stripe.Checkout.SessionCreateParams.LineItem = {
       price_data: {
-        currency: "gbp",
-        unit_amount: menuItem.price,
+        currency: "inr",
+        unit_amount: menuItem.price, // Already in paise
         product_data: {
           name: menuItem.name,
         },
@@ -147,6 +173,7 @@ const createSession = async (
   deliveryPrice: number,
   restaurantId: string
 ) => {
+  // Delivery price is already in paise
   const sessionData = await STRIPE.checkout.sessions.create({
     line_items: lineItems,
     shipping_options: [
@@ -155,8 +182,8 @@ const createSession = async (
           display_name: "Delivery",
           type: "fixed_amount",
           fixed_amount: {
-            amount: deliveryPrice,
-            currency: "gbp",
+            amount: deliveryPrice, // Already in paise
+            currency: "inr",
           },
         },
       },
