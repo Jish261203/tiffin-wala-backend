@@ -82,10 +82,34 @@ const getMyRestaurantOrders = async (req: Request, res: Response) => {
     }
 
     const orders = await Order.find({ restaurant: restaurant._id })
-      .populate("restaurant")
+      .populate({
+        path: "restaurant",
+        populate: {
+          path: "menuItems"
+        }
+      })
       .populate("user");
 
-    res.json(orders);
+    // Ensure prices are properly formatted in the response
+    const formattedOrders = orders.map(order => {
+      // Calculate total if not set
+      const totalAmount = order.totalAmount || order.cartItems.reduce(
+        (total, item) => total + (item.price || 0) * (parseInt(item.quantity) || 1), 
+        0
+      );
+
+      return {
+        ...order.toObject(),
+        totalAmount,
+        cartItems: order.cartItems.map(item => ({
+          ...item,
+          price: item.price || 0,
+          quantity: item.quantity || "1"
+        }))
+      };
+    });
+
+    res.json(formattedOrders);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "something went wrong" });

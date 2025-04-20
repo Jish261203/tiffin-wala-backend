@@ -1,27 +1,25 @@
 import mongoose, { InferSchemaType } from "mongoose";
 
+export interface MenuItemType {
+  _id: string;
+  name: string;
+  price: number;
+  description: string;
+  imageUrl: string;
+}
+
 const menuItemSchema = new mongoose.Schema({
-  _id: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    default: () => new mongoose.Types.ObjectId(),
-  },
   name: { type: String, required: true },
   price: { type: Number, required: true },
-  day: { 
-    type: String, 
-    required: true,
-    enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-  }
+  description: { type: String, required: true },
+  imageUrl: { type: String, required: true },
 });
 
 // Create an index on the day field for efficient querying
 menuItemSchema.index({ day: 1 });
 
-export type MenuItemType = InferSchemaType<typeof menuItemSchema>;
-
 const restaurantSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   restaurantName: { type: String, required: true },
   city: { type: String, required: true },
   country: { type: String, required: true },
@@ -31,6 +29,7 @@ const restaurantSchema = new mongoose.Schema({
   menuItems: [menuItemSchema],
   imageUrl: { type: String, required: true },
   lastUpdated: { type: Date, required: true },
+  address: { type: String, required: true },
 });
 
 const Restaurant = mongoose.model("Restaurant", restaurantSchema);
